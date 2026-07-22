@@ -1,0 +1,358 @@
+// This file defines the data contracts (messages) for your Axiom package.
+// Every node's --input and --output refers to a message defined here.
+//
+// Run `axiom create message <Name>` to scaffold a new message below.
+// Run `axiom generate` to compile these definitions into language bindings in gen/.
+//
+// DOCUMENTATION
+//   Comments written directly above a message or field declaration are extracted
+//   automatically at publish time and shown in the Axiom registry as documentation.
+//   Write your descriptions there — no separate doc files needed.
+//
+//   Leading comment  (no blank line before the declaration) → registry description ✓
+//   Detached comment (blank line before the declaration)    → ignored by registry  ✗
+//
+// This file is yours to edit. Axiom only appends new message blocks — it never
+// overwrites or removes content you have written.
+
+syntax = "proto3";
+
+package christiangeorgelucas.ofx_tools;
+
+option java_package = "gen";
+option java_outer_classname = "Messages";
+
+// The OFX/QFX syntax a document was written in — legacy OFX 1.x uses a
+// tag-based SGML grammar with an HTTP-header-like preamble and unclosed
+// (implied-close) tags; OFX 2.x is well-formed XML with an <?OFX ...?>
+// processing instruction.
+enum OfxSyntax {
+  OFX_SYNTAX_UNSPECIFIED = 0;
+  SGML = 1;
+  XML = 2;
+}
+
+// The declared account type (OFX ACCTTYPE), covering both banking and
+// investment account kinds. CREDITCARD accounts are reported by
+// CreditCardStatement nodes; the others by the banking-statement nodes.
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  CHECKING = 1;
+  SAVINGS = 2;
+  MONEYMRKT = 3;
+  CREDITLINE = 4;
+  CD = 5;
+  CREDITCARD = 6;
+  INVESTMENT = 7;
+}
+
+// Raw OFX or QFX document text, exactly as downloaded from a bank/card/
+// brokerage export. No network fetch is ever performed — the caller always
+// supplies the file content directly.
+message RawOfxInput {
+  string ofx_text = 1;
+}
+
+// A structured, non-throwing error result. When ok is false, message and
+// code explain what went wrong (malformed input, unsafe input, or oversize
+// input) and the rest of the containing message's fields are left at their
+// zero value rather than partially populated.
+message OfxError {
+  bool ok = 1;
+  string message = 2;
+  // One of: MALFORMED, NO_ROOT_OFX, UNSAFE_DOCTYPE, TOO_LARGE, EMPTY_INPUT.
+  string code = 3;
+}
+
+// Lightweight version/syntax detection from the OFX header only — does not
+// parse the full document body, so it succeeds even on a document whose body
+// is malformed.
+message FormatInfo {
+  // The OFX header version string as declared, e.g. "102" (OFX 1.0.2) or
+  // "203" (OFX 2.0.3).
+  string version = 1;
+  OfxSyntax syntax = 2;
+  OfxError error = 3;
+}
+
+// Sign-on (FI session) information from a parsed OFX document's SONRS
+// aggregate.
+message SignOnInfo {
+  string status_code = 1;
+  string status_severity = 2;
+  string status_message = 3;
+  // ISO 8601. Empty if the server did not report DTSERVER.
+  string server_date_iso = 4;
+  string language = 5;
+  string org = 6;
+  string fid = 7;
+  string session_id = 8;
+}
+
+// A ledger or available balance: an amount as of a declared date. present is
+// false when the source statement did not report this balance at all (an
+// absent balance is distinct from a zero balance).
+message Balance {
+  bool present = 1;
+  double amount = 2;
+  // ISO 8601 date/time, as declared (DTASOF).
+  string as_of_date_iso = 3;
+}
+
+// One statement transaction (OFX STMTTRN), from a banking or credit-card
+// statement's transaction list.
+message Transaction {
+  // Which statement (account_id) and statement kind ("BANK"/"CREDITCARD")
+  // this transaction came from — populated when a node flattens
+  // transactions across multiple statements.
+  string account_id = 1;
+  string statement_kind = 2;
+
+  // Raw OFX TRNTYPE, e.g. "DEBIT", "CREDIT", "CHECK", "ATM", "POS", "FEE",
+  // "INT", "DIV", "XFER", "PAYMENT", "DIRECTDEP", "DIRECTDEBIT", "OTHER".
+  string type = 3;
+  // ISO 8601, from DTPOSTED.
+  string date_posted_iso = 4;
+  // ISO 8601, from DTUSER. Empty if not reported.
+  string date_user_iso = 5;
+  // Signed: positive for money in, negative for money out (OFX convention).
+  double amount = 6;
+  // Financial Institution Transaction ID — the unique id OFX uses for
+  // duplicate detection across re-downloads of overlapping date ranges.
+  string fitid = 7;
+  string check_num = 8;
+  string ref_num = 9;
+  // NAME or PAYEE, whichever the statement provided.
+  string name = 10;
+  string memo = 11;
+  string sic = 12;
+}
+
+// A bank account, credit-card account, or investment account identifier
+// (OFX BANKACCTFROM / CCACCTFROM / INVACCTFROM).
+message Account {
+  string bank_id = 1;
+  string branch_id = 2;
+  string account_id = 3;
+  AccountType account_type = 4;
+  string account_key = 5;
+}
+
+// One investment transaction (OFX INVTRAN family: buy/sell/income/etc.),
+// from an investment statement's transaction list.
+message InvestmentTransaction {
+  string account_id = 1;
+  // e.g. "BUYSTOCK", "SELLSTOCK", "BUYMF", "SELLMF", "BUYOPT", "SELLOPT",
+  // "BUYDEBT", "SELLDEBT", "INCOME", "REINVEST", "TRANSFER", "SPLIT",
+  // "MARGININTEREST", "INVEXPENSE", "JRNLSEC", "JRNLFUND", "CLOSUREOPT".
+  string type = 2;
+  string fitid = 3;
+  // ISO 8601.
+  string trade_date_iso = 4;
+  // ISO 8601. Empty if not reported.
+  string settle_date_iso = 5;
+  string security_id = 6;
+  string security_id_type = 7;
+  double units = 8;
+  double unit_price = 9;
+  double commission = 10;
+  double fees = 11;
+  double total = 12;
+  string sub_account = 13;
+  string memo = 14;
+  // Populated only for INCOME transactions: "CGLONG", "CGSHORT", "DIV",
+  // "INTEREST", "MISC".
+  string income_type = 15;
+}
+
+// One statement (OFX STMTRS / CCSTMTRS / INVSTMTRS) — a bank, credit-card,
+// or investment statement response, holding one account's activity over a
+// declared period.
+message Statement {
+  // "BANK", "CREDITCARD", or "INVESTMENT".
+  string statement_kind = 1;
+  Account account = 2;
+  // ISO 4217 currency code (CURDEF), e.g. "USD".
+  string currency = 3;
+  // ISO 8601, from DTSTART. Empty if not reported.
+  string start_date_iso = 4;
+  // ISO 8601, from DTEND. Empty if not reported.
+  string end_date_iso = 5;
+  repeated Transaction transactions = 6;
+  Balance ledger_balance = 7;
+  Balance available_balance = 8;
+  repeated InvestmentTransaction investment_transactions = 9;
+}
+
+// The canonical, normalized parse of an OFX/QFX document: every downstream
+// extraction/filter node in this package consumes this envelope rather than
+// re-parsing raw text. Produced by ParseDocument.
+message OfxDocument {
+  string version = 1;
+  OfxSyntax syntax = 2;
+  SignOnInfo sign_on = 3;
+  repeated Statement statements = 4;
+  // ok is false when the document could not be parsed at all (malformed,
+  // unsafe, oversize, or empty input) — statements/sign_on are then empty
+  // rather than partially populated.
+  OfxError error = 5;
+}
+
+// A flattened list of transactions, independent of which statement each
+// came from — the shape every filter/aggregate node in this package
+// consumes and emits so they compose freely with each other.
+message TransactionList {
+  repeated Transaction transactions = 1;
+}
+
+message ExtractAccountsResult {
+  repeated Account accounts = 1;
+  OfxError error = 2;
+}
+
+message StatementPeriod {
+  string statement_kind = 1;
+  string account_id = 2;
+  string start_date_iso = 3;
+  string end_date_iso = 4;
+}
+
+message ExtractStatementPeriodsResult {
+  repeated StatementPeriod periods = 1;
+  OfxError error = 2;
+}
+
+message AccountBalance {
+  string statement_kind = 1;
+  string account_id = 2;
+  Balance ledger_balance = 3;
+  Balance available_balance = 4;
+}
+
+message ExtractBalancesResult {
+  repeated AccountBalance balances = 1;
+  OfxError error = 2;
+}
+
+message ComputeTotalsResult {
+  // Sum of all positive-amount transactions (money in).
+  double sum_credits = 1;
+  // Sum of the absolute value of all negative-amount transactions (money
+  // out) — always reported as a non-negative number.
+  double sum_debits = 2;
+  // sum_credits - sum_debits.
+  double net = 3;
+  int32 transaction_count = 4;
+  OfxError error = 5;
+}
+
+message FilterByTypeInput {
+  TransactionList transactions = 1;
+  // Case-insensitive match against Transaction.type, e.g. "DEBIT", "CREDIT",
+  // "CHECK". Exactly one type per call.
+  string type = 2;
+}
+
+message FilterByDateRangeInput {
+  TransactionList transactions = 1;
+  // Both ISO 8601 (date or date-time). Inclusive on both ends. Either may
+  // be left empty for an open-ended bound.
+  string start_date_iso = 2;
+  string end_date_iso = 3;
+}
+
+message FilterByAmountThresholdInput {
+  TransactionList transactions = 1;
+  // Inclusive bounds, evaluated against the transaction's signed amount.
+  // Set has_min/has_max false to leave that bound open.
+  bool has_min = 2;
+  double min_amount = 3;
+  bool has_max = 4;
+  double max_amount = 5;
+}
+
+message CreditCardStatementDetail {
+  Account account = 1;
+  string currency = 2;
+  string start_date_iso = 3;
+  string end_date_iso = 4;
+  repeated Transaction transactions = 5;
+  Balance ledger_balance = 6;
+  Balance available_balance = 7;
+}
+
+message ExtractCreditCardStatementsResult {
+  repeated CreditCardStatementDetail statements = 1;
+  OfxError error = 2;
+}
+
+message InvestmentTransactionList {
+  repeated InvestmentTransaction transactions = 1;
+  OfxError error = 2;
+}
+
+message AccountCurrency {
+  string statement_kind = 1;
+  string account_id = 2;
+  string currency = 3;
+}
+
+message ExtractCurrencyResult {
+  repeated AccountCurrency currencies = 1;
+  OfxError error = 2;
+}
+
+message NormalizeDateInput {
+  // OFX date/time: YYYYMMDD[HHMMSS[.XXX]][gmt offset[:tz name]], e.g.
+  // "20250714", "20250714120000", "20250714120000.000[-5:EST]".
+  string ofx_date = 1;
+}
+
+message NormalizeDateResult {
+  // ISO 8601, always normalized to UTC ("Z"). Date-only input ("YYYYMMDD",
+  // no time component) normalizes to a date-only ISO string ("yyyy-MM-dd");
+  // input carrying a time normalizes to a full UTC ISO 8601 date-time. A
+  // declared source timezone offset (the "[gmt offset:tz name]" suffix) is
+  // resolved into the UTC instant rather than preserved as an offset.
+  string iso_date = 1;
+  OfxError error = 2;
+}
+
+message TypeCount {
+  string type = 1;
+  int32 count = 2;
+}
+
+message SummarizeTransactionsResult {
+  int32 count = 1;
+  repeated TypeCount count_by_type = 2;
+  double total_in = 3;
+  double total_out = 4;
+  double net = 5;
+  OfxError error = 6;
+}
+
+message DuplicateGroup {
+  string fitid = 1;
+  int32 count = 2;
+  // Zero-based indices into the input TransactionList naming every
+  // transaction sharing this fitid.
+  repeated int32 indices = 3;
+}
+
+message DetectDuplicatesResult {
+  repeated DuplicateGroup duplicate_groups = 1;
+  int32 duplicate_transaction_count = 2;
+  OfxError error = 3;
+}
+
+message ValidateStructureResult {
+  bool valid = 1;
+  // Human-readable structural issues found, e.g. "missing SIGNONMSGSRSV1",
+  // "no statement response found". Empty when valid is true.
+  repeated string issues = 2;
+  bool has_ofx_root = 3;
+  bool has_signon = 4;
+  int32 statement_count = 5;
+  OfxError error = 6;
+}

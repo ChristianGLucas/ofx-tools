@@ -1,0 +1,24 @@
+# Axiom flow — composes published nodes into a graph.
+# Reference nodes by package + node name (discover them with: axiom search --json).
+# Positions are coarse grid cells; omit col/row to auto-layout (axiom flow layout).
+name: ofx-pipeline
+description: "Parse an OFX statement, flatten its transactions, and total credits/debits."
+
+nodes:
+  - alias: parse
+    package: christiangeorgelucas/ofx-tools@0.1.0
+    node: ParseDocument
+  - alias: extract
+    package: christiangeorgelucas/ofx-tools@0.1.0
+    node: ExtractTransactions
+  - alias: totals
+    package: christiangeorgelucas/ofx-tools@0.1.0
+    node: ComputeTransactionTotals
+
+edges:
+  - from: parse
+    to: extract
+  - from: extract
+    to: totals
+
+start: parse

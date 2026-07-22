@@ -1,0 +1,102 @@
+name: christiangeorgelucas/ofx-tools
+version: 0.1.0
+language: java
+description: >-
+  Composable Axiom nodes for deterministic parsing and inspection of OFX
+  (Open Financial Exchange) and QFX financial-statement files — the format
+  banks, credit-card issuers, and brokerages export for download into
+  accounting software. Handles BOTH OFX syntaxes: legacy OFX 1.x SGML
+  (unclosed tags, HTTP-header-like preamble) and OFX 2.x XML, via
+  Apache-2.0-licensed ofx4j. Detects version/syntax, parses a document into a
+  normalized structure, and extracts/filters/summarizes accounts, statement
+  periods, transactions, balances, credit-card and investment statement
+  specifics, and currency — plus date normalization and FITID-based
+  duplicate detection. Every node is a pure, deterministic, single-input to
+  single-output transform: no bank connections, no network, no wall-clock,
+  no randomness — the OFX file is always supplied as text by the caller.
+  Distinct from fix-protocol-tools (FIX trading messages), money-tools
+  (currency math), quant-finance-tools (derivatives/bond pricing), and
+  iban-tools (account-number validation).
+author: Christian George Lucas
+license: MIT
+tags:
+    - ofx
+    - qfx
+    - banking
+    - accounting
+    - fintech
+    - personal-finance
+    - statement-parsing
+    - open-financial-exchange
+build:
+    maven_deps:
+        - com.webcohesion.ofx4j:ofx4j:1.39
+nodes:
+    - name: DetectFormat
+      description: Detect an OFX/QFX document's declared version (e.g. "102", "203") and syntax (SGML for OFX 1.x, XML for OFX 2.x) from its header only, without parsing the document body — succeeds even when the body is malformed.
+      input: RawOfxInput
+      output: FormatInfo
+    - name: ParseDocument
+      description: Parse a full OFX/QFX document (either SGML or XML syntax) into the canonical normalized OfxDocument structure — sign-on info plus every bank, credit-card, and investment statement with its accounts, transactions, and balances. Every other extraction/filter node in this package consumes this envelope. Rejects any input containing a DOCTYPE declaration (XXE hardening) and any input over 5 MiB, returning a structured error rather than a crash.
+      input: RawOfxInput
+      output: OfxDocument
+    - name: ExtractAccounts
+      description: List every account (bank id, account id, account type, branch/routing info) declared across all statements in a parsed OfxDocument.
+      input: OfxDocument
+      output: ExtractAccountsResult
+    - name: ExtractStatementPeriods
+      description: List the declared statement period (start/end date, as reported by the statement — not inferred from transaction dates) for every statement in a parsed OfxDocument.
+      input: OfxDocument
+      output: ExtractStatementPeriodsResult
+    - name: ExtractTransactions
+      description: Flatten every banking and credit-card transaction across all statements in a parsed OfxDocument into a single structured TransactionList (type, date posted, amount, name/payee, memo, check number, FITID). Investment transactions are not included — use ExtractInvestmentTransactions.
+      input: OfxDocument
+      output: TransactionList
+    - name: ExtractBalances
+      description: List the ledger balance and available balance (amount plus as-of date) declared for every statement in a parsed OfxDocument.
+      input: OfxDocument
+      output: ExtractBalancesResult
+    - name: ComputeTransactionTotals
+      description: Pure aggregation over a TransactionList — the sum of credit (positive) amounts, the sum of debit (negative) amounts as a non-negative number, and the net (credits minus debits).
+      input: TransactionList
+      output: ComputeTotalsResult
+    - name: FilterTransactionsByType
+      description: Keep only the transactions in a TransactionList whose type case-insensitively matches the requested OFX TRNTYPE (e.g. "DEBIT", "CREDIT", "CHECK", "ATM").
+      input: FilterByTypeInput
+      output: TransactionList
+    - name: FilterTransactionsByDateRange
+      description: Keep only the transactions in a TransactionList whose date_posted_iso falls within an inclusive ISO 8601 [start, end] range; either bound may be left empty for an open-ended range.
+      input: FilterByDateRangeInput
+      output: TransactionList
+    - name: FilterTransactionsByAmountThreshold
+      description: Keep only the transactions in a TransactionList whose signed amount falls within an inclusive [min, max] threshold; either bound may be omitted for an open-ended threshold.
+      input: FilterByAmountThresholdInput
+      output: TransactionList
+    - name: ExtractCreditCardStatements
+      description: List every credit-card statement (CCSTMTRS) in a parsed OfxDocument with its account, currency, statement period, transactions, and ledger/available balance.
+      input: OfxDocument
+      output: ExtractCreditCardStatementsResult
+    - name: ExtractInvestmentTransactions
+      description: Flatten every investment transaction (buy/sell/income/reinvest/transfer/split/etc.) across all investment statements in a parsed OfxDocument into a single structured list.
+      input: OfxDocument
+      output: InvestmentTransactionList
+    - name: ExtractCurrency
+      description: List the declared currency (CURDEF, ISO 4217) for every statement in a parsed OfxDocument.
+      input: OfxDocument
+      output: ExtractCurrencyResult
+    - name: NormalizeOfxDate
+      description: Normalize a single raw OFX date/time string (YYYYMMDD[HHMMSS[.XXX]] with an optional GMT-offset/timezone suffix) into ISO 8601. A malformed date returns a structured error.
+      input: NormalizeDateInput
+      output: NormalizeDateResult
+    - name: SummarizeTransactions
+      description: Summarize a TransactionList — total count, count broken down by transaction type, total money in, total money out, and net.
+      input: TransactionList
+      output: SummarizeTransactionsResult
+    - name: DetectDuplicateTransactions
+      description: Find transactions in a TransactionList that share the same FITID (the OFX unique-transaction identifier) — the standard signal for an overlapping-date-range re-download containing the same transaction twice.
+      input: TransactionList
+      output: DetectDuplicatesResult
+    - name: ValidateStructure
+      description: Validate an OFX/QFX document's basic structural correctness — a parseable root OFX element, a sign-on response, and at least one statement — and report the specific issues found, without throwing on a malformed document.
+      input: RawOfxInput
+      output: ValidateStructureResult
