@@ -22,10 +22,24 @@ from its header and parse either one into the same normalized structure.
 Wraps [`ofx4j`](https://github.com/stoicflame/ofx4j) (`com.webcohesion.ofx4j`,
 Apache-2.0), the Java reference OFX client/parser library. Its
 `NanoXMLOFXReader` implements the SGML implied-close-tag grammar directly and
-auto-detects OFX 1 vs OFX 2 from the document header. Full runtime dependency
-tree (all permissive): `commons-logging` (Apache-2.0), `nanoxml`
-(zlib/libpng), `reflections` (WTFPL), `jakarta.xml.bind-api` +
-`jakarta.activation-api` (BSD-3-Clause / EDL 1.0).
+auto-detects OFX 1 vs OFX 2 from the document header.
+
+Full runtime dependency tree (verified via `mvn dependency:tree`, all
+permissive): `commons-logging` 1.2 (Apache-2.0), `nanoxml` 2.2.3
+(zlib/libpng), `jakarta.xml.bind-api` 4.0.0 + `jakarta.activation-api` 2.1.0
+(BSD-3-Clause / EDL 1.0), `reflections` (WTFPL / New BSD), `javassist`
+(triple-licensed MPL-1.1 / LGPL-2.1 / Apache-2.0 — used here under the
+Apache-2.0 option).
+
+**Note:** ofx4j's own POM transitively requests `org.reflections:reflections:
+0.9.10`, which in turn pulls in `com.google.code.findbugs:annotations:2.0.1`
+— an **LGPL-only** dependency. This package's `axiom.yaml` explicitly pins
+`org.reflections:reflections:0.9.12` (a same-line, API-compatible version —
+verified with the full test suite) to override that transitive request via
+Maven's nearest-wins dependency mediation; 0.9.12 drops the
+findbugs-annotations dependency entirely. Axiom's `build.maven_deps` does not
+yet support Maven `<exclusions>`, so this direct-pin override is the
+mechanism used instead — see the retrospective for the full reasoning.
 
 This package only ever *parses a document the caller already has* — it never
 implements OFX's separate bank-connection network protocol, never makes a

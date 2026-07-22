@@ -38,9 +38,9 @@ public class SummarizeTransactions {
 
         SummarizeTransactionsResult.Builder result = SummarizeTransactionsResult.newBuilder()
                 .setCount(input.getTransactionsCount())
-                .setTotalIn(totalIn)
-                .setTotalOut(totalOut)
-                .setNet(totalIn - totalOut)
+                .setTotalIn(OfxSupport.roundToCents(totalIn))
+                .setTotalOut(OfxSupport.roundToCents(totalOut))
+                .setNet(OfxSupport.roundToCents(totalIn - totalOut))
                 .setError(OfxSupport.okError());
         for (Map.Entry<String, Integer> e : countByType.entrySet()) {
             result.addCountByType(TypeCount.newBuilder().setType(e.getKey()).setCount(e.getValue()).build());

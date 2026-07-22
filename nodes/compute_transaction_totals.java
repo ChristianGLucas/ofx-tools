@@ -30,9 +30,9 @@ public class ComputeTransactionTotals {
             }
         }
         return ComputeTotalsResult.newBuilder()
-                .setSumCredits(credits)
-                .setSumDebits(debits)
-                .setNet(credits - debits)
+                .setSumCredits(OfxSupport.roundToCents(credits))
+                .setSumDebits(OfxSupport.roundToCents(debits))
+                .setNet(OfxSupport.roundToCents(credits - debits))
                 .setTransactionCount(input.getTransactionsCount())
                 .setError(OfxSupport.okError())
                 .build();

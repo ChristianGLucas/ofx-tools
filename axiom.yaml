@@ -31,6 +31,17 @@ tags:
 build:
     maven_deps:
         - com.webcohesion.ofx4j:ofx4j:1.39
+        # Pinned ABOVE ofx4j's own transitive request (0.9.10): Maven's
+        # nearest-wins dependency mediation makes this direct declaration
+        # win over the transitive one. ofx4j's transitive reflections:0.9.10
+        # pulls in com.google.code.findbugs:annotations:2.0.1, which is
+        # LGPL-only — a real copyleft violation. 0.9.12 is API-compatible
+        # (ofx4j only calls the single-string-package constructor +
+        # getTypesAnnotatedWith, both unchanged across the 0.9.x line) and
+        # drops that dependency entirely: its only non-optional runtime dep
+        # is javassist (MPL 1.1 / LGPL 2.1 / Apache-2.0 triple-licensed —
+        # used here under the Apache-2.0 option).
+        - org.reflections:reflections:0.9.12
 nodes:
     - name: DetectFormat
       description: Detect an OFX/QFX document's declared version (e.g. "102", "203") and syntax (SGML for OFX 1.x, XML for OFX 2.x) from its header only, without parsing the document body — succeeds even when the body is malformed.

@@ -688,6 +688,15 @@ final class OfxSupport {
     }
   }
 
+  /**
+   * Rounds a currency total to the nearest cent. Plain double arithmetic on
+   * ordinary two-decimal currency amounts (e.g. 50.00 - 89.99) otherwise
+   * produces IEEE artifacts like -39.989999999999995 in aggregation nodes.
+   */
+  static double roundToCents(double amount) {
+    return Math.round(amount * 100.0) / 100.0;
+  }
+
   // ─────────────────────────── shared utils ───────────────────────────
 
   static String toIso(Date d) {
