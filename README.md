@@ -3,7 +3,7 @@
 Deterministic parsing and inspection of **OFX** (Open Financial Exchange) and
 **QFX** financial-statement files — the format banks, credit-card issuers, and
 brokerages export for download into accounting software (Quicken, GnuCash,
-etc.). Built for the [Axiom](https://axiom.dev) marketplace, handle
+etc.). Built for the [Axiom](https://axiomide.com) marketplace, handle
 `christiangeorgelucas`.
 
 OFX ships in two incompatible syntaxes and this package handles both:
