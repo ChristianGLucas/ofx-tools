@@ -54,9 +54,9 @@ message RawOfxInput {
 }
 
 // A structured, non-throwing error result. When ok is false, message and
-// code explain what went wrong (malformed input, unsafe input, or oversize
-// input) and the rest of the containing message's fields are left at their
-// zero value rather than partially populated.
+// code explain what went wrong (malformed input or unsafe input) and the
+// rest of the containing message's fields are left at their zero value
+// rather than partially populated.
 message OfxError {
   bool ok = 1;
   string message = 2;
@@ -193,8 +193,8 @@ message OfxDocument {
   SignOnInfo sign_on = 3;
   repeated Statement statements = 4;
   // ok is false when the document could not be parsed at all (malformed,
-  // unsafe, oversize, or empty input) — statements/sign_on are then empty
-  // rather than partially populated.
+  // unsafe, or empty input) — statements/sign_on are then empty rather
+  // than partially populated.
   OfxError error = 5;
 }
 

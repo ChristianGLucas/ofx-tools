@@ -14,8 +14,8 @@ public class ValidateStructure {
      * on a malformed document: a document that fails to parse at all is
      * reported as valid=false with the parse failure listed as an issue,
      * not as a top-level error (the top-level error field is reserved for
-     * input the node could not even attempt to validate: empty, oversize,
-     * or a rejected DOCTYPE).
+     * input the node could not even attempt to validate: empty or a
+     * rejected DOCTYPE).
      *
      * @param ax    The AxiomContext: logging, secrets, reflection, mutation.
      * @param input The raw OFX/QFX document text.

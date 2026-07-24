@@ -15,10 +15,10 @@ public class ParseDocument {
      * and balances. Every other extraction/filter node in this package
      * consumes this envelope rather than re-parsing raw text.
      *
-     * <p>Input is bounded to 5 MiB and rejected outright if it contains a
-     * DOCTYPE declaration (XXE hardening — OFX documents never legitimately
-     * need one). A malformed document (including adversarially deep SGML
-     * nesting) returns a structured error rather than crashing.
+     * <p>Input is rejected outright if it contains a DOCTYPE declaration
+     * (XXE hardening — OFX documents never legitimately need one). A
+     * malformed document (including adversarially deep SGML nesting)
+     * returns a structured error rather than crashing.
      *
      * @param ax    The AxiomContext: logging, secrets, reflection, mutation.
      * @param input The raw OFX/QFX document text.
