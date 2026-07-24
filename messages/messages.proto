@@ -60,7 +60,7 @@ message RawOfxInput {
 message OfxError {
   bool ok = 1;
   string message = 2;
-  // One of: MALFORMED, NO_ROOT_OFX, UNSAFE_DOCTYPE, TOO_LARGE, EMPTY_INPUT.
+  // One of: MALFORMED, NO_ROOT_OFX, UNSAFE_DOCTYPE, EMPTY_INPUT.
   string code = 3;
 }
 

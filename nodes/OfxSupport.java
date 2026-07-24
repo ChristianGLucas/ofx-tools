@@ -62,9 +62,6 @@ final class OfxSupport {
   private OfxSupport() {
   }
 
-  static final int MAX_INPUT_CHARS = 5_000_000;
-  static final int MAX_DATE_INPUT_CHARS = 64;
-
   private static final Pattern OFX2_PROCESSING_INSTRUCTION =
       Pattern.compile("<\\?OFX\\s+([^\\?]+)\\?>", Pattern.CASE_INSENSITIVE);
   private static final Pattern VERSION_ATTRIBUTE =
@@ -107,10 +104,6 @@ final class OfxSupport {
   static Messages.OfxError guardInput(String text) {
     if (text == null || text.trim().isEmpty()) {
       return error("EMPTY_INPUT", "ofx_text is empty.");
-    }
-    if (text.length() > MAX_INPUT_CHARS) {
-      return error("TOO_LARGE",
-          "ofx_text is " + text.length() + " characters, exceeding the " + MAX_INPUT_CHARS + " character limit.");
     }
     // OFX documents never legitimately declare a DOCTYPE. ofx4j's OFX-2/XML
     // reader uses a bare org.xml.sax.helpers.XMLReaderFactory.createXMLReader()
@@ -722,11 +715,6 @@ final class OfxSupport {
     if (rawOfxDate == null || rawOfxDate.trim().isEmpty()) {
       return Messages.NormalizeDateResult.newBuilder()
           .setError(error("EMPTY_INPUT", "ofx_date is empty."))
-          .build();
-    }
-    if (rawOfxDate.length() > MAX_DATE_INPUT_CHARS) {
-      return Messages.NormalizeDateResult.newBuilder()
-          .setError(error("TOO_LARGE", "ofx_date exceeds the " + MAX_DATE_INPUT_CHARS + " character limit."))
           .build();
     }
     try {
